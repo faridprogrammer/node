@@ -184,6 +184,25 @@ export class EventsService {
     ```
      */
   async getFutureEventWithWorkshops() {
-    throw new Error('TODO task 2');
+    let now = new Date(Date.now());
+    let events: Event[] = await this.workshopRepository.query(
+      `SELECT event.* 
+        FROM workshop
+        JOIN event 
+        ON workshop.eventId = event.id
+        GROUP BY workshop.eventId
+        HAVING MAX(workshop.start) > '${now.toISOString()}'`);
+    console.log(events);
+    // sorry for code duplicate
+    let eventsWithWorkshopsPromises = events.map(async event => {
+      let workshops = await this.workshopRepository.createQueryBuilder("workshop")
+        .where("workshop.eventId = :id", { id: event.id })
+        .getMany();
+      event.workshops = workshops;
+      return event;
+    });
+
+    let result = await Promise.all(eventsWithWorkshopsPromises);
+    return result;
   }
 }
