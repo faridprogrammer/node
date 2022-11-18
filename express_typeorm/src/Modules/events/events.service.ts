@@ -1,13 +1,16 @@
 import { Repository } from 'typeorm';
 import { Event } from './entities/event.entity';
 import App from "../../app";
+import { Workshop } from './entities/workshop.entity';
 
 
 export class EventsService {
   private eventRepository: Repository<Event>;
+  private workshopRepository: Repository<Workshop>;
 
   constructor(app: App) {
     this.eventRepository = app.getDataSource().getRepository(Event);
+    this.workshopRepository = app.getDataSource().getRepository(Workshop);
   }
 
   async getWarmupEvents() {
@@ -92,7 +95,26 @@ export class EventsService {
      */
 
   async getEventsWithWorkshops() {
-    throw new Error('TODO task 1');
+    // todo: couldn order the many side of the join correctly so went for plan B
+    // let events = await this.eventRepository.createQueryBuilder("event")
+    //                                        .leftJoinAndSelect("event.workshops", "workshop")
+    //                                        .orderBy("workshop.name")
+    //                                        .getMany();
+    // console.log(JSON.stringify(events));
+    // return events;
+
+    let events = await this.eventRepository.createQueryBuilder("event").getMany();
+
+    let eventsWithWorkshopsPromises = events.map(async event => {
+      let workshops = await this.workshopRepository.createQueryBuilder("workshop")
+        .where("workshop.eventId = :id", { id: event.id })
+        .getMany();
+      event.workshops = workshops;
+      return event;
+    });
+
+    let result = await Promise.all(eventsWithWorkshopsPromises);
+    return result;
   }
 
   /* TODO: complete getFutureEventWithWorkshops so that it returns events with workshops, that have not yet started
